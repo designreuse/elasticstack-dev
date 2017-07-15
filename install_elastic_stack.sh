@@ -1,14 +1,16 @@
 #!/bin/bash
 
+PWD=`pwd`
+
 ESGR=`grep elasticstack /etc/group`
 if [ "x$ESGR" == "x" ]; then
   groupadd elasticstack
 fi;
 
 # ******** ELASTICSEARCH
-ES_USER_EXISTS=`getent passwd | grep elasticsearch`
+USER_EXISTS=`getent passwd | grep elasticsearch`
 
-if [ "x$ES_USER_EXISTS" == "x" ]; then
+if [ "x$USER_EXISTS" == "x" ]; then
   useradd -r -g elasticstack --no-create-home  elasticsearch
 fi;
 
@@ -23,13 +25,13 @@ export ES_NETWORK_HOST=0.0.0.0
 sed -i -e 's/#network.host: 192.168.0.1/#network.host: \${ES_NETWORK_HOST}/g' elasticsearch/config/elasticsearch.yml
 sysctl -w vm.max_map_count=262144 > /dev/null
 
-su - elasticsearch -c '/opt/elasticsearch/bin/elasticsearch -d'
+su - elasticsearch -c "$PWD/elasticsearch/bin/elasticsearch -d"
 
 
 # ********** ZOOKEEPER
 USER_EXISTS=`getent passwd | grep zookeeper`
 
-if [ "x$ES_USER_EXISTS" == "x" ]; then
+if [ "x$USER_EXISTS" == "x" ]; then
   useradd -r -g elasticstack --no-create-home zookeeper
 fi;
 
@@ -42,16 +44,23 @@ mv zookeeper/conf/zoo_sample.cfg zookeeper/conf/zoo.cfg
 
 chown -R zookeeper:elasticstack zookeeper
 
-su - zookeeper -c 'export ZOO_LOG_DIR=/tmp; /opt/zookeeper/bin/zkServer.sh start'
+su - zookeeper -c "export ZOO_LOG_DIR=/tmp; $PWD/zookeeper/bin/zkServer.sh start"
 
 # +++++++ KAFKA
+USER_EXISTS=`getent passwd | grep kafka`
+
+if [ "x$USER_EXISTS" == "x" ]; then
+  useradd -r -g elasticstack --no-create-home kafka
+fi;
 
 #wget http://ftp.unicamp.br/pub/apache/kafka/0.11.0.0/kafka_2.12-0.11.0.0.tgz
 
 tar xfz kafka_2.12-0.11.0.0.tgz
-
 mv kafka_2.12-0.11.0.0 kafka
 
+chown -R kafka:elasticstack kafka
+
+su - kafka -c "$PWD/kafka/bin/kafka-server-start.sh $PWD/kafka/config/server.properties"
 
 #wget https://artifacts.elastic.co/downloads/logstash/logstash-5.5.0.tar.gz
 #wget https://artifacts.elastic.co/downloads/kibana/kibana-5.5.0-linux-x86_64.tar.gz
