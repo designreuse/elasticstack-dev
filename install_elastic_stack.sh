@@ -41,10 +41,15 @@ tar xfz zookeeper-3.4.10.tar.gz
 
 mv zookeeper-3.4.10 zookeeper
 mv zookeeper/conf/zoo_sample.cfg zookeeper/conf/zoo.cfg
+mkdir zookeeper/logs zookeeper/datadir -p
+
+sed -i -e "s|dataDir=/tmp/zookeeper|dataDir=$PWD/zookeeper/datadir|g" zookeeper/conf/zoo.cfg
 
 chown -R zookeeper:elasticstack zookeeper
 
-su - zookeeper -c "export ZOO_LOG_DIR=/tmp; $PWD/zookeeper/bin/zkServer.sh start"
+su - zookeeper -c "export ZOO_LOG_DIR=$PWD/zookeeper/logs; $PWD/zookeeper/bin/zkServer.sh start"
+
+sleep 3;
 
 # +++++++ KAFKA
 USER_EXISTS=`getent passwd | grep kafka`
@@ -58,9 +63,25 @@ fi;
 tar xfz kafka_2.12-0.11.0.0.tgz
 mv kafka_2.12-0.11.0.0 kafka
 
+mkdir kafka/logfiles -p
+sed -i -e "s|log.dirs=/tmp/kafka-logs|log.dirs=$PWD/kafka/logfiles|g" kafka/config/server.properties
+
 chown -R kafka:elasticstack kafka
 
-su - kafka -c "$PWD/kafka/bin/kafka-server-start.sh $PWD/kafka/config/server.properties"
+su - kafka -c "$PWD/kafka/bin/kafka-server-start.sh -daemon $PWD/kafka/config/server.properties"
+
+sleep 1
+
+for i in $(seq 1 10); do
+  echo -n "x"
+  F=`grep 'started (kafka.server.KafkaServer)' $PWD/kafka/logs/server.log`
+  if [ "x$F" == "x" ]; then
+    sleep 2;
+  fi;
+done;
+echo "."
+
+su - kafka -c "$PWD/kafka/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic elasticsearch-lane"
 
 #wget https://artifacts.elastic.co/downloads/logstash/logstash-5.5.0.tar.gz
 #wget https://artifacts.elastic.co/downloads/kibana/kibana-5.5.0-linux-x86_64.tar.gz

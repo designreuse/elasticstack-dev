@@ -1,7 +1,12 @@
 #!/bin/bash
 
 echo "Java's..."
+kafka/bin/kafka-server-stop.sh
 pkill java
+
+sleep 3
+
+pkill -9 java
 
 echo Elasticsearch...
 rm -rf elasticsearch
