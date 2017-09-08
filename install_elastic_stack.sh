@@ -79,6 +79,7 @@ mv kafka_2.12-0.11.0.0 kafka
 
 mkdir kafka/logfiles -p
 sed -i -e "s|log.dirs=/tmp/kafka-logs|log.dirs=$PWD/kafka/logfiles|g" kafka/config/server.properties
+sed -i -e "s|#listeners=PLAINTEXT://:9092|PLAINTEXT://0.0.0.0:9092|g" kafka/config/server.properties
 
 chown -R kafka:elasticstack kafka
 
@@ -116,10 +117,11 @@ tar xfz logstash-5.5.0.tar.gz
 mv logstash-5.5.0 logstash
 # fonte: https://gist.github.com/trestini/08119a65cf20b48793c2cdc38d5cf6b8
 curl -s https://gist.githubusercontent.com/trestini/08119a65cf20b48793c2cdc38d5cf6b8/raw > $PWD/logstash/pipeline.conf
+sed -i -e "s|stdout { codec => rubydebug }| |g" $PWD/logstash/pipeline.conf
 
 chown -R logstash:elasticstack logstash 
 
-su - logstash -c "/usr/bin/nohup $PWD/logstash/bin/logstash --log.level debug -f $PWD/logstash/pipeline.conf > $PWD/logstash/logstash.log &" > /dev/null
+su - logstash -c "/usr/bin/nohup $PWD/logstash/bin/logstash --log.level warn -f $PWD/logstash/pipeline.conf > $PWD/logstash/logstash.log &" > /dev/null
 echo "-- Finished Logstash installation and running"
 
 # ++++++++ KIBANA
@@ -139,6 +141,7 @@ fi;
 tar xfz kibana-5.5.0-linux-x86_64.tar.gz
 mv kibana-5.5.0-linux-x86_64 kibana
 sed -i -e 's|#server.host: "localhost"|server.host: "0.0.0.0"|g' $PWD/kibana/config/kibana.yml
+sed -i -e 's|#server.port: 5601|server.port: 8080|g' $PWD/kibana/config/kibana.yml
 
 chown -R kibana:elasticstack kibana
 
